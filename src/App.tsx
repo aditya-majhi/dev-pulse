@@ -5,6 +5,7 @@ import PATSetup from "./screens/SetPat";
 import AnalysesList from "./screens/Dashboard";
 import RepoDetails from "./screens/RepoDetails";
 import { isAuthenticated } from "./utils/utils";
+import Success from "./screens/success";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -25,6 +26,15 @@ function App() {
           element={
             <ProtectedRoute>
               <PATSetup />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/auth/success"
+          element={
+            <ProtectedRoute>
+              <Success />
             </ProtectedRoute>
           }
         />
