@@ -18,7 +18,6 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<GitHubLogin />} />
-        <Route path="/auth/success" element={<GitHubLogin />} />
 
         {/* ✅ PAT Setup Route */}
         <Route
