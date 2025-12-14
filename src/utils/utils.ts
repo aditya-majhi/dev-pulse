@@ -1,3 +1,5 @@
+import { removePAT } from "./crypto";
+
 export const saveToken = (token: string) => {
   localStorage.setItem("devpulse_token", token);
 };
@@ -16,5 +18,6 @@ export const isAuthenticated = (): boolean => {
 
 export const logout = () => {
   removeToken();
+  removePAT(); // ✅ Also remove PAT on logout
   window.location.href = "/login";
 };

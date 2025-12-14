@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import GitHubLogin from "./screens/login";
+import PATSetup from "./screens/SetPat";
 import AnalysesList from "./screens/Dashboard";
 import RepoDetails from "./screens/RepoDetails";
 import { isAuthenticated } from "./utils/utils";
@@ -17,6 +18,17 @@ function App() {
       <Routes>
         <Route path="/login" element={<GitHubLogin />} />
         <Route path="/auth/success" element={<GitHubLogin />} />
+
+        {/* ✅ PAT Setup Route */}
+        <Route
+          path="/setup-pat"
+          element={
+            <ProtectedRoute>
+              <PATSetup />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/analyses"
           element={

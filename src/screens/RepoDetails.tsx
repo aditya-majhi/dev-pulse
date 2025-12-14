@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import apiService from "../services/api";
-import { type Analysis } from "../types";
+import type { Analysis } from "../types";
 import { RiskBadge } from "../components/riskBadge";
 import { Loader } from "../components/loader";
+import { hasPAT } from "../utils/crypto";
 
 const RepoDetails: React.FC = () => {
   const { analysisId } = useParams<{ analysisId: string }>();
@@ -31,6 +32,14 @@ const RepoDetails: React.FC = () => {
   };
 
   const handleRaisePR = async () => {
+    // ✅ Check if PAT is available
+    if (!hasPAT()) {
+      if (confirm("GitHub PAT required to create PRs. Set it up now?")) {
+        navigate("/setup-pat");
+      }
+      return;
+    }
+
     if (!confirm("Raise PR for high-risk issues?")) return;
 
     try {

@@ -6,6 +6,7 @@ import type {
   AutonomousFixResponse,
   GitHubTokenResponse,
 } from "../types";
+import { getPAT } from "../utils/crypto";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
@@ -18,10 +19,9 @@ class ApiService {
       headers: {
         "Content-Type": "application/json",
       },
-      withCredentials: true, // For session cookies
+      withCredentials: true,
     });
 
-    // Add auth token to all requests
     this.api.interceptors.request.use((config) => {
       const token = localStorage.getItem("devpulse_token");
       if (token) {
@@ -30,7 +30,6 @@ class ApiService {
       return config;
     });
 
-    // Handle 401 errors
     this.api.interceptors.response.use(
       (response) => response,
       (error) => {
@@ -82,7 +81,7 @@ class ApiService {
     sortBy?: string;
     order?: string;
   }): Promise<AnalysesResponse> {
-    const response = await this.api.get("/cline/all-analysis", { params });
+    const response = await this.api.get("/cline/my-analyses", { params });
     return response.data;
   }
 
@@ -104,13 +103,13 @@ class ApiService {
   // AUTONOMOUS FIX
   // =============================
 
-  async triggerAutonomousFix(
-    analysisId: string,
-    accessToken?: string
-  ): Promise<AutonomousFixResponse> {
+  async triggerAutonomousFix(analysisId: string): Promise<AutonomousFixResponse> {
+    // ✅ Get PAT from localStorage and send it in request
+    const pat = getPAT();
+
     const response = await this.api.post("/cline/autonomous-fix", {
       analysisId,
-      accessToken, // Optional if saved in session
+      accessToken: pat, // ✅ Send decrypted PAT
     });
     return response.data;
   }

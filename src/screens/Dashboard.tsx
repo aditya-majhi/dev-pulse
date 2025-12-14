@@ -5,6 +5,7 @@ import type { Analysis, GitHubRepo } from "../types";
 import { AnalysisCard } from "../components/analysisCard";
 import { Loader } from "../components/loader";
 import { isAuthenticated, logout } from "../utils/utils";
+import { hasPAT, removePAT } from "../utils/crypto";
 
 const AnalysesList: React.FC = () => {
   const navigate = useNavigate();
@@ -15,12 +16,19 @@ const AnalysesList: React.FC = () => {
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
   const [showRepoModal, setShowRepoModal] = useState(false);
   const [analyzingRepo, setAnalyzingRepo] = useState(false);
+  const [showPATWarning, setShowPATWarning] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate("/login");
       return;
     }
+
+    // Check if PAT is set
+    if (!hasPAT()) {
+      setShowPATWarning(true);
+    }
+
     fetchAnalyses();
   }, [navigate]);
 
@@ -61,7 +69,6 @@ const AnalysesList: React.FC = () => {
       });
       setShowRepoModal(false);
       setSelectedRepo(null);
-      // Refresh analyses list
       setTimeout(fetchAnalyses, 2000);
     } catch (error: any) {
       alert(error.response?.data?.error || "Failed to start analysis");
@@ -71,6 +78,14 @@ const AnalysesList: React.FC = () => {
   };
 
   const handleRaisePR = async (analysisId: string) => {
+    // ✅ Check if PAT is available
+    if (!hasPAT()) {
+      if (confirm("GitHub PAT required to create PRs. Set it up now?")) {
+        navigate("/setup-pat");
+      }
+      return;
+    }
+
     if (!confirm("Are you sure you want to raise a PR for high-risk issues?")) {
       return;
     }
@@ -86,6 +101,18 @@ const AnalysesList: React.FC = () => {
 
   const handleViewDetails = (analysisId: string) => {
     navigate(`/analysis/${analysisId}`);
+  };
+
+  const handleSetupPAT = () => {
+    navigate("/setup-pat");
+  };
+
+  const handleRemovePAT = () => {
+    if (confirm("Are you sure you want to remove your GitHub PAT?")) {
+      removePAT();
+      setShowPATWarning(true);
+      alert("PAT removed successfully");
+    }
   };
 
   if (loading) {
@@ -107,6 +134,36 @@ const AnalysesList: React.FC = () => {
               <p className="text-sm text-gray-500">Recent Analyses</p>
             </div>
             <div className="flex items-center gap-3">
+              {/* PAT Status */}
+              {hasPAT() ? (
+                <button
+                  onClick={handleRemovePAT}
+                  className="px-3 py-2 text-sm bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition flex items-center gap-2"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  PAT Connected
+                </button>
+              ) : (
+                <button
+                  onClick={handleSetupPAT}
+                  className="px-3 py-2 text-sm bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition"
+                >
+                  Setup PAT
+                </button>
+              )}
+
               <button
                 onClick={fetchRepos}
                 disabled={loadingRepos}
@@ -124,6 +181,61 @@ const AnalysesList: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* PAT Warning Banner */}
+      {showPATWarning && (
+        <div className="bg-yellow-50 border-b border-yellow-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <svg
+                  className="w-5 h-5 text-yellow-600 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <p className="text-sm text-yellow-800">
+                  <strong>GitHub PAT not configured.</strong> You won't be able
+                  to create automated PRs.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSetupPAT}
+                  className="px-4 py-1.5 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700 transition"
+                >
+                  Setup Now
+                </button>
+                <button
+                  onClick={() => setShowPATWarning(false)}
+                  className="p-1.5 text-yellow-600 hover:text-yellow-800"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Analyses Grid */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

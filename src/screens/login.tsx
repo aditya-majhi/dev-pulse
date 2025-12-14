@@ -1,54 +1,47 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { saveToken, isAuthenticated } from "../utils/utils";
-import apiService from "../services/api";
+import { hasPAT } from "../utils/crypto";
 
 const GitHubLogin: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [patInput, setPATInput] = useState("");
 
   useEffect(() => {
     // Check if already authenticated
     if (isAuthenticated()) {
-      navigate("/analyses");
+      // Check if PAT is set, if not redirect to PAT setup
+      if (hasPAT()) {
+        navigate("/analyses");
+      } else {
+        navigate("/setup-pat");
+      }
       return;
     }
 
     // Handle OAuth callback with JWT token
     const token = searchParams.get("token");
+    const errorParam = searchParams.get("error");
+
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+      return;
+    }
+
     if (token) {
       saveToken(token);
-      navigate("/analyses");
+      // After successful login, redirect to PAT setup
+      navigate("/setup-pat");
     }
   }, [searchParams, navigate]);
 
   const handleGitHubLogin = () => {
     // Redirect to backend OAuth endpoint
-    const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const backendUrl =
+      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+      "http://localhost:5000";
     window.location.href = `${backendUrl}/api/v1/auth/github`;
-  };
-
-  const handlePATSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!patInput.trim()) {
-      setError("Please enter a valid GitHub Personal Access Token");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      await apiService.saveGitHubToken(patInput);
-      navigate("/analyses");
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to save token");
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -78,7 +71,7 @@ const GitHubLogin: React.FC = () => {
         {/* Login Card */}
         <div className="bg-white rounded-lg shadow-xl p-8">
           <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-            Connect GitHub
+            Welcome Back
           </h2>
 
           {error && (
@@ -98,60 +91,81 @@ const GitHubLogin: React.FC = () => {
             Continue with GitHub
           </button>
 
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+          {/* Features */}
+          <div className="space-y-3 mt-8">
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-5 h-5 text-green-600 mt-0.5 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  AI-Powered Analysis
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Deep code quality and security analysis using advanced AI
+                </p>
+              </div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">
-                or use Personal Access Token
-              </span>
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-5 h-5 text-green-600 mt-0.5 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <div>
+                <h3 className="font-semibold text-gray-900">Automated Fixes</h3>
+                <p className="text-sm text-gray-600">
+                  Automatically create PRs with fixes for high-risk issues
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-5 h-5 text-green-600 mt-0.5 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  Real-time Monitoring
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Track analysis progress and PR status in real-time
+                </p>
+              </div>
             </div>
           </div>
-
-          {/* PAT Form */}
-          <form onSubmit={handlePATSubmit}>
-            <div className="mb-4">
-              <label
-                htmlFor="pat"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                GitHub Personal Access Token
-              </label>
-              <input
-                type="password"
-                id="pat"
-                value={patInput}
-                onChange={(e) => setPATInput(e.target.value)}
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Generate at{" "}
-                <a
-                  href="https://github.com/settings/tokens"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  github.com/settings/tokens
-                </a>
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Saving..." : "Save Token & Continue"}
-            </button>
-          </form>
         </div>
 
         {/* Footer */}
         <p className="text-center text-gray-400 text-sm mt-6">
-          By connecting, you agree to our Terms of Service
+          By continuing, you agree to our Terms of Service and Privacy Policy
         </p>
       </div>
     </div>
