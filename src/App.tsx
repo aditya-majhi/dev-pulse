@@ -30,14 +30,7 @@ function App() {
           }
         />
 
-        <Route
-          path="/auth/success"
-          element={
-            <ProtectedRoute>
-              <Success />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/auth/success" element={<Success />} />
 
         <Route
           path="/analyses"
