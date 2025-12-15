@@ -81,7 +81,7 @@ class ApiService {
     sortBy?: string;
     order?: string;
   }): Promise<AnalysesResponse> {
-    const response = await this.api.get("/cline/my-analyses", { params });
+    const response = await this.api.get("/cline/all-analysis", { params });
     return response.data;
   }
 
