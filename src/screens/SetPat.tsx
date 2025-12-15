@@ -22,23 +22,12 @@ const PATSetup: React.FC = () => {
     }
   }, [navigate]);
 
-  const validatePAT = (pat: string): boolean => {
-    // GitHub PAT format validation
-    const githubPATRegex = /^gh[ps]_[a-zA-Z0-9]{36,255}$/;
-    return githubPATRegex.test(pat);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (!patInput.trim()) {
       setError("Please enter your GitHub Personal Access Token");
-      return;
-    }
-
-    if (!validatePAT(patInput)) {
-      setError("Invalid PAT format. Must start with 'ghp_' or 'ghs_'");
       return;
     }
 
@@ -173,7 +162,7 @@ const PATSetup: React.FC = () => {
                 value={patInput}
                 onChange={(e) => setPATInput(e.target.value)}
                 placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-black text-sm"
                 autoComplete="off"
               />
               <p className="mt-2 text-xs text-gray-500">

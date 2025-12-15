@@ -23,6 +23,7 @@ const RepoDetails: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiService.getAnalysis(analysisId!);
+      console.log("📊 Analysis Response:", response.analysis); // Debug log
       setAnalysis(response.analysis);
     } catch (error) {
       console.error("Failed to fetch analysis:", error);
@@ -32,7 +33,6 @@ const RepoDetails: React.FC = () => {
   };
 
   const handleRaisePR = async () => {
-    // ✅ Check if PAT is available
     if (!hasPAT()) {
       if (confirm("GitHub PAT required to create PRs. Set it up now?")) {
         navigate("/setup-pat");
@@ -80,9 +80,19 @@ const RepoDetails: React.FC = () => {
     );
   }
 
-  const isHighRisk = (analysis.code_quality?.score || 0) < 70;
+  // ✅ Handle both camelCase and snake_case
+  const codeQuality = analysis.code_quality || (analysis as any).codeQuality;
+  const aiAnalysis = analysis.ai_analysis || (analysis as any).aiAnalysis;
+  const structure = analysis.structure;
+  const status = analysis.status;
+  const progress = analysis.progress || 0;
+
+  const isHighRisk = (codeQuality?.score || 0) < 70;
   const canRaisePR =
-    analysis.status === "completed" && isHighRisk && !analysis.hasActiveFixes;
+    status === "completed" &&
+    isHighRisk &&
+    !analysis.hasActiveFixes &&
+    !(analysis as any).has_active_fixes;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -115,7 +125,9 @@ const RepoDetails: React.FC = () => {
               </h1>
               <p className="text-gray-500">{analysis.repo_owner}</p>
             </div>
-            <RiskBadge score={analysis.code_quality?.score} size="lg" />
+            {status === "completed" && codeQuality && (
+              <RiskBadge score={codeQuality.score} size="lg" />
+            )}
           </div>
         </div>
       </header>
@@ -129,9 +141,49 @@ const RepoDetails: React.FC = () => {
               <button
                 onClick={handleRaisePR}
                 disabled={raisingPR}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
               >
-                {raisingPR ? "Creating PR..." : "Raise PR for High Risks"}
+                {raisingPR ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Creating PR...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                    Raise PR for High Risks
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -139,164 +191,213 @@ const RepoDetails: React.FC = () => {
             <div>
               <p className="text-sm text-gray-500">Status</p>
               <p className="text-lg font-semibold capitalize">
-                {analysis.status}
+                {status.replace("_", " ")}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Progress</p>
-              <p className="text-lg font-semibold">{analysis.progress}%</p>
+              <p className="text-lg font-semibold">{progress}%</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Files Analyzed</p>
               <p className="text-lg font-semibold">
-                {analysis.structure?.totalFiles || 0}
+                {structure?.totalFiles || 0}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Quality Score</p>
               <p className="text-lg font-semibold">
-                {analysis.code_quality?.score || "N/A"} / 100
+                {codeQuality?.score || "N/A"}
+                {codeQuality?.score && " / 100"}
               </p>
             </div>
           </div>
+
+          {/* Message */}
+          {analysis.message && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">{analysis.message}</p>
+            </div>
+          )}
+
+          {/* Error */}
+          {analysis.error && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800">{analysis.error}</p>
+            </div>
+          )}
         </div>
 
         {/* AI Analysis Results */}
-        {analysis.ai_analysis && (
+        {aiAnalysis && (
           <>
             {/* Architecture */}
-            {analysis.ai_analysis.architecture && (
+            {aiAnalysis.architecture && (
               <div className="bg-white rounded-lg shadow p-6 mb-6">
-                <h2 className="text-xl font-semibold mb-4">Architecture</h2>
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <span>🏗️</span> Architecture
+                </h2>
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-gray-500">Pattern</p>
                     <p className="text-lg font-semibold">
-                      {analysis.ai_analysis.architecture.pattern}
+                      {aiAnalysis.architecture.pattern || "Unknown"}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-2">Strengths</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      {analysis.ai_analysis.architecture.strengths.map(
-                        (strength, i) => (
-                          <li key={i} className="text-gray-700">
-                            {strength}
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-2">Weaknesses</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      {analysis.ai_analysis.architecture.weaknesses.map(
-                        (weakness, i) => (
-                          <li key={i} className="text-gray-700">
-                            {weakness}
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  </div>
+                  {aiAnalysis.architecture.strengths &&
+                    aiAnalysis.architecture.strengths.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-500 mb-2">
+                          ✅ Strengths
+                        </p>
+                        <ul className="list-disc list-inside space-y-1">
+                          {aiAnalysis.architecture.strengths.map(
+                            (strength: string, i: number) => (
+                              <li key={i} className="text-gray-700">
+                                {strength}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  {aiAnalysis.architecture.weaknesses &&
+                    aiAnalysis.architecture.weaknesses.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-500 mb-2">
+                          ⚠️ Weaknesses
+                        </p>
+                        <ul className="list-disc list-inside space-y-1">
+                          {aiAnalysis.architecture.weaknesses.map(
+                            (weakness: string, i: number) => (
+                              <li key={i} className="text-gray-700">
+                                {weakness}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
                 </div>
               </div>
             )}
 
             {/* Security Issues */}
-            {analysis.ai_analysis.security &&
-              analysis.ai_analysis.security.length > 0 && (
-                <div className="bg-white rounded-lg shadow p-6 mb-6">
-                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <span className="text-red-600">🔒</span> Security Issues (
-                    {analysis.ai_analysis.security.length})
-                  </h2>
-                  <div className="space-y-3">
-                    {analysis.ai_analysis.security.map((issue, i) => (
-                      <div
-                        key={i}
-                        className={`p-4 rounded-lg border ${
-                          issue.severity === "critical"
-                            ? "bg-red-50 border-red-200"
-                            : issue.severity === "high"
-                            ? "bg-orange-50 border-orange-200"
-                            : "bg-yellow-50 border-yellow-200"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900">
-                              {issue.type}
-                            </h3>
-                            <p className="text-sm text-gray-700 mt-1">
-                              {issue.description ||
-                                "Security vulnerability detected"}
+            {aiAnalysis.security && aiAnalysis.security.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-6 mb-6">
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <span className="text-red-600">🔒</span> Security Issues (
+                  {aiAnalysis.security.length})
+                </h2>
+                <div className="space-y-3">
+                  {aiAnalysis.security.map((issue: any, i: number) => (
+                    <div
+                      key={i}
+                      className={`p-4 rounded-lg border ${
+                        issue.severity === "critical"
+                          ? "bg-red-50 border-red-200"
+                          : issue.severity === "high"
+                          ? "bg-orange-50 border-orange-200"
+                          : "bg-yellow-50 border-yellow-200"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900">
+                            {issue.type || "Security Issue"}
+                          </h3>
+                          <p className="text-sm text-gray-700 mt-1">
+                            {issue.description ||
+                              "Security vulnerability detected"}
+                          </p>
+                          {issue.file && (
+                            <p className="text-xs text-gray-500 mt-2 font-mono">
+                              📄 {issue.file}
                             </p>
-                            {issue.file && (
-                              <p className="text-xs text-gray-500 mt-2">
-                                File: {issue.file}
-                              </p>
-                            )}
-                          </div>
-                          <span
-                            className={`px-2 py-1 text-xs font-semibold rounded ${
-                              issue.severity === "critical"
-                                ? "bg-red-200 text-red-800"
-                                : issue.severity === "high"
-                                ? "bg-orange-200 text-orange-800"
-                                : "bg-yellow-200 text-yellow-800"
-                            }`}
-                          >
-                            {issue.severity?.toUpperCase()}
-                          </span>
+                          )}
                         </div>
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded ${
+                            issue.severity === "critical"
+                              ? "bg-red-200 text-red-800"
+                              : issue.severity === "high"
+                              ? "bg-orange-200 text-orange-800"
+                              : "bg-yellow-200 text-yellow-800"
+                          }`}
+                        >
+                          {(issue.severity || "medium").toUpperCase()}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
             {/* Bugs */}
-            {analysis.ai_analysis.bugs &&
-              analysis.ai_analysis.bugs.length > 0 && (
+            {aiAnalysis.bugs && aiAnalysis.bugs.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-6 mb-6">
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <span>🐛</span> Bugs ({aiAnalysis.bugs.length})
+                </h2>
+                <div className="space-y-3">
+                  {aiAnalysis.bugs.map((bug: any, i: number) => (
+                    <div
+                      key={i}
+                      className="p-4 rounded-lg border border-gray-200 bg-gray-50"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-gray-900">
+                            {bug.description || "Bug detected"}
+                          </p>
+                          {bug.file && (
+                            <p className="text-xs text-gray-500 mt-2 font-mono">
+                              📄 {bug.file}
+                            </p>
+                          )}
+                        </div>
+                        <span className="px-2 py-1 text-xs font-semibold rounded bg-gray-200 text-gray-800">
+                          {(bug.severity || "medium").toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Code Quality Issues */}
+            {aiAnalysis.codeQuality?.issues &&
+              aiAnalysis.codeQuality.issues.length > 0 && (
                 <div className="bg-white rounded-lg shadow p-6 mb-6">
                   <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <span>🐛</span> Bugs ({analysis.ai_analysis.bugs.length})
+                    <span>📊</span> Code Quality Issues
                   </h2>
-                  <div className="space-y-3">
-                    {analysis.ai_analysis.bugs.map((bug, i) => (
-                      <div
-                        key={i}
-                        className="p-4 rounded-lg border border-gray-200 bg-gray-50"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="text-gray-900">{bug.description}</p>
-                            {bug.file && (
-                              <p className="text-xs text-gray-500 mt-2">
-                                File: {bug.file}
-                              </p>
-                            )}
-                          </div>
-                          <span className="px-2 py-1 text-xs font-semibold rounded bg-gray-200 text-gray-800">
-                            {bug.severity?.toUpperCase()}
-                          </span>
+                  <div className="space-y-2">
+                    {aiAnalysis.codeQuality.issues.map(
+                      (issue: string, i: number) => (
+                        <div
+                          key={i}
+                          className="p-3 rounded border border-gray-200 bg-gray-50 text-sm text-gray-700"
+                        >
+                          • {issue}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    )}
                   </div>
                 </div>
               )}
 
             {/* Recommendations */}
-            {analysis.ai_analysis.recommendations &&
-              analysis.ai_analysis.recommendations.length > 0 && (
+            {aiAnalysis.recommendations &&
+              aiAnalysis.recommendations.length > 0 && (
                 <div className="bg-white rounded-lg shadow p-6 mb-6">
                   <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                     <span>💡</span> Recommendations
                   </h2>
                   <div className="space-y-4">
-                    {analysis.ai_analysis.recommendations.map((rec, i) => (
+                    {aiAnalysis.recommendations.map((rec: any, i: number) => (
                       <div
                         key={i}
                         className="p-4 rounded-lg border border-blue-200 bg-blue-50"
@@ -311,11 +412,11 @@ const RepoDetails: React.FC = () => {
                                 : "bg-green-200 text-green-800"
                             }`}
                           >
-                            {rec.priority?.toUpperCase()}
+                            {(rec.priority || "low").toUpperCase()}
                           </span>
                           <div className="flex-1">
                             <h3 className="font-semibold text-gray-900">
-                              {rec.title}
+                              {rec.title || "Recommendation"}
                             </h3>
                             <p className="text-sm text-gray-700 mt-1">
                               {rec.description}
@@ -330,57 +431,100 @@ const RepoDetails: React.FC = () => {
           </>
         )}
 
+        {/* No AI Analysis Yet */}
+        {status === "completed" && !aiAnalysis && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+            <svg
+              className="w-12 h-12 text-yellow-600 mx-auto mb-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Analysis Incomplete
+            </h3>
+            <p className="text-gray-600">
+              AI analysis data is not available. The analysis may have completed
+              with errors.
+            </p>
+          </div>
+        )}
+
         {/* PR Status */}
-        {analysis.fixes && analysis.fixes.length > 0 && (
+        {(analysis.fixes || (analysis as any).fix_jobs) && (
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Pull Requests</h2>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span>🔧</span> Pull Requests
+            </h2>
             <div className="space-y-3">
-              {analysis.fixes.map((fix) => (
-                <div
-                  key={fix.job_id}
-                  className="p-4 rounded-lg border border-gray-200"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold">
-                      Fix Job: {fix.job_id.substring(0, 20)}...
-                    </span>
-                    <span
-                      className={`px-2 py-1 text-xs rounded ${
-                        fix.status === "completed"
-                          ? "bg-green-100 text-green-800"
-                          : fix.status === "failed"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {fix.status.toUpperCase()}
-                    </span>
-                  </div>
-                  {fix.pr_url && (
-                    <a
-                      href={fix.pr_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline inline-flex items-center gap-1"
-                    >
-                      View Pull Request #{fix.pr_number}
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+              {(analysis.fixes || (analysis as any).fix_jobs || []).map(
+                (fix: any) => (
+                  <div
+                    key={fix.job_id}
+                    className="p-4 rounded-lg border border-gray-200 bg-gray-50"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold font-mono text-sm">
+                        {fix.job_id.substring(0, 20)}...
+                      </span>
+                      <span
+                        className={`px-2 py-1 text-xs rounded ${
+                          fix.status === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : fix.status === "failed"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                        />
-                      </svg>
-                    </a>
-                  )}
-                </div>
-              ))}
+                        {fix.status.toUpperCase()}
+                      </span>
+                    </div>
+                    {fix.message && (
+                      <p className="text-sm text-gray-600 mb-2">
+                        {fix.message}
+                      </p>
+                    )}
+                    {fix.pr_url && (
+                      <a
+                        href={fix.pr_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline inline-flex items-center gap-1 text-sm"
+                      >
+                        View Pull Request #{fix.pr_number}
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </a>
+                    )}
+                    {fix.high_impact_issues && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <p className="text-xs text-gray-500 mb-2">
+                          Fixed {fix.high_impact_issues.length} high-impact
+                          issues
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
             </div>
           </div>
         )}

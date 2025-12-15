@@ -51,52 +51,45 @@ export interface FixJob {
     completed_at?: string;
 }
 
+export interface Fix {
+    job_id: string;
+    analysis_id: string;
+    status: string;
+    progress: number;
+    message?: string;
+    pr_url?: string;
+    pr_number?: number;
+    high_impact_issues?: any[];
+    files_modified?: string[];
+    error?: string;
+    created_at?: string;
+    completed_at?: string;
+}
+
 export interface Analysis {
     analysis_id: string;
+    user_id?: string;
     repo_name: string;
     repo_owner: string;
     repo_url: string;
-    status: "pending" | "cloning" | "analyzing" | "ai_analyzing" | "completed" | "failed";
+    status: string;
     progress: number;
-    code_quality?: CodeQuality;
-    structure?: {
-        totalFiles: number;
-    };
-    message: string;
+    current_step?: number;
+    total_steps?: number;
+    message?: string;
     error?: string;
-    created_at: string;
-    completed_at?: string;
-    updated_at: string;
-    fixes?: FixJob[];
-    hasActiveFixes: boolean;
-    hasCompletedFixes: boolean;
-    ai_analysis?: {
-        architecture?: {
-            pattern: string;
-            strengths: string[];
-            weaknesses: string[];
-        };
-        codeQuality?: {
-            score: number;
-            issues: string[];
-        };
-        bugs?: Array<{
-            severity: string;
-            description: string;
-            file?: string;
-        }>;
-        security?: Array<{
-            type: string;
-            severity: string;
-            file?: string;
-            description?: string;
-        }>;
-        recommendations?: Array<{
-            priority: string;
-            title: string;
-            description: string;
-        }>;
+    structure?: any;
+    code_quality?: {
+        score: number;
+        grade: string;
     };
+    ai_analysis?: any;
+    created_at: string;
+    updated_at?: string;
+    completed_at?: string;
+    fixes?: Fix[]; // ✅ Updated to use Fix interface
+    hasActiveFixes?: boolean;
+    hasCompletedFixes?: boolean;
 }
 
 export interface AnalysesResponse {
